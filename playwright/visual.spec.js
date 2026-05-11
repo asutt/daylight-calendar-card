@@ -113,7 +113,7 @@ const cases = [
     config: {
       default_view: 'month',
       event_styles: [{ id: 'style-standup', priority: 10, match: { title: 'Standup' }, style: { background_color: '#f8d7da', event_font_color: '#721c24' } }],
-      day_styles: [{ condition: 'today', background: '#f4f7ff', opacity: 1 }]
+      day_styles: [{ condition: 'day_of_week', day_of_week: ['saturday', 'sunday'], background: '#dcfce7', opacity: 1 }]
     },
     darkMode: false,
     events: baseEvents,
@@ -122,8 +122,10 @@ const cases = [
       await expect(card).toContainText('Standup');
       await expect(card.locator('.event').filter({ hasText: 'Standup' })).toHaveCSS('background-color', 'rgb(248, 215, 218)');
       await expect(card.locator('.event').filter({ hasText: 'Standup' })).toHaveCSS('color', 'rgb(114, 28, 36)');
-      await expect(card.locator('.day-cell.today')).toHaveClass(/day-style-has-background/);
-      await expect(card.locator('.day-cell.today')).toHaveCSS('background-color', 'rgb(244, 247, 255)');
+      await expect(card.locator('.day-cell[data-date^="2026-03-14"]').first()).toHaveClass(/day-style-has-background/);
+      await expect(card.locator('.day-cell[data-date^="2026-03-14"]').first()).toHaveCSS('background-color', 'rgb(220, 252, 231)');
+      await expect(card.locator('.day-cell[data-date^="2026-03-15"]').first()).toHaveClass(/day-style-has-background/);
+      await expect(card.locator('.day-cell[data-date^="2026-03-15"]').first()).toHaveCSS('background-color', 'rgb(220, 252, 231)');
     }
   },
   { name: 'month-dense-overflow-collapsed', config: { default_view: 'month', show_all_events_month: false }, darkMode: false, events: overflowEvents, viewLabel: 'Month', assert: async (card) => { await expect(card.locator('.more-events')).toContainText(/\+\d+ more/); } },
