@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const path = require('path');
 
 const FIXED_NOW = '2026-03-15T10:00:00.000Z';
-const LONG_LOCATION = '12345 Extremely Long Conference Center Name, Building Q, Floor 42, Room 4201, Springfield, Oregon 97477';
+const LONG_LOCATION = '12345 Extremely Long Conference Center Road, Building Q, Floor 42, Room 4201, Springfield, Oregon 97477';
 const INLINE_BACKGROUND_SVG = `data:image/svg+xml,${encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
     <rect width="96" height="96" fill="#dbeafe"/>
@@ -129,7 +129,7 @@ const cases = [
   { name: 'month-dense-overflow-collapsed', config: { default_view: 'month', show_all_events_month: false }, darkMode: false, events: overflowEvents, viewLabel: 'Month', assert: async (card) => { await expect(card.locator('.more-events')).toContainText(/\+\d+ more/); } },
   { name: 'month-dense-overflow-expanded', config: { default_view: 'month', show_all_events_month: true }, darkMode: false, events: overflowEvents, viewLabel: 'Month', assert: async (card) => { expect(await card.locator('.day-cell.today .event, .day-cell.today .week-compact-event').count()).toBeGreaterThan(8); } },
   { name: 'event-location-full', config: { default_view: 'week-standard', show_event_location: true, use_short_location: false, week_start_hour: 8, week_end_hour: 16 }, darkMode: false, events: locationEvents, viewLabel: 'Schedule', assert: async (card) => { await expect(card.locator('.week-standard-event-location').first()).toContainText('Building Q'); } },
-  { name: 'event-location-short', config: { default_view: 'week-standard', show_event_location: true, use_short_location: true, week_start_hour: 8, week_end_hour: 16 }, darkMode: false, events: locationEvents, viewLabel: 'Schedule', assert: async (card) => { await expect(card.locator('.week-standard-event-location').first()).toContainText('Extremely Long Conference Center Name'); await expect(card.locator('.week-standard-event-location').first()).not.toContainText('Building Q'); } },
+  { name: 'event-location-short', config: { default_view: 'week-standard', show_event_location: true, use_short_location: true, week_start_hour: 8, week_end_hour: 16 }, darkMode: false, events: locationEvents, viewLabel: 'Schedule', assert: async (card) => { await expect(card.locator('.week-standard-event-location').first()).toContainText('Extremely Long Conference Center Road'); await expect(card.locator('.week-standard-event-location').first()).not.toContainText('Building Q'); } },
   { name: 'background-header-opacity', config: { default_view: 'month', background_opacity: 45, header_background_opacity: 20, background_image_url: INLINE_BACKGROUND_SVG, background_image_size: '96px 96px', background_image_position: 'top left', background_image_repeat: 'repeat', header_color: '#0f172a', header_text_color: '#ffffff' }, darkMode: false, events: baseEvents, viewLabel: 'Month' },
   { name: 'week-standard-current-time-bar', config: { default_view: 'week-standard', show_current_time_bar: true, week_start_hour: 8, week_end_hour: 18 }, darkMode: false, events: baseEvents, viewLabel: 'Schedule', assert: async (card) => { await expect(card.locator('.current-time-line')).toBeVisible(); } },
   { name: 'week-compact-compact-header', config: { default_view: 'week-compact', compact_header: true }, darkMode: false, events: baseEvents, viewLabel: 'Week', headerSelector: '.header-compact' },
