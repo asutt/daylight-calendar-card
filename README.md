@@ -110,8 +110,6 @@ entities:
 ---
 
 
-
-
 ## 📚 Documentation
 
 Daylight Calendar Card includes a visual configurator for most common options.

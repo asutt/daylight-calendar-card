@@ -1001,6 +1001,21 @@ class SkylightCalendarCard extends HTMLElement {
     return 'none';
   }
 
+  normalizeEntityStringMap(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return Object.entries(value).reduce((acc, [key, mappedValue]) => {
+      const normalizedKey = typeof key === 'string' ? key.trim() : '';
+      const normalizedValue = typeof mappedValue === 'string' ? mappedValue.trim() : '';
+      if (normalizedKey && normalizedValue) {
+        acc[normalizedKey] = normalizedValue;
+      }
+      return acc;
+    }, {});
+  }
+
   normalizeBooleanStyleValue(value) {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {
@@ -1210,6 +1225,7 @@ class SkylightCalendarCard extends HTMLElement {
     const normalizedEventBarWidth = hasEventBarWidth
       ? rawEventBarWidth
       : normalizedCombineWidth;
+    const normalizedCalendarPersonEntities = this.normalizeEntityStringMap(config.calendar_person_entities || {});
 
     this._config = {
       title: this._hasCustomTitle ? config.title : translate(language, 'defaultTitle'),
@@ -1218,6 +1234,7 @@ class SkylightCalendarCard extends HTMLElement {
       colors: normalizedCalendarColors,
       calendar_names: config.calendar_names || {}, // Map entity IDs to friendly names
       calendar_badge_icons: config.calendar_badge_icons || {}, // Map entity IDs to badge icon (mdi:*) or photo URL
+      calendar_person_entities: normalizedCalendarPersonEntities, // Map header calendar badges to person entities for state/photo display
       maxEvents: Number.isFinite(configuredMaxEvents) && configuredMaxEvents >= 0 ? configuredMaxEvents : 0,
       default_view: normalizedDefaultView || 'month', // Default view on load
       week_days: config.week_days || [0, 1, 2, 3, 4, 5, 6], // Which days to show in week view
@@ -1308,6 +1325,7 @@ class SkylightCalendarCard extends HTMLElement {
       header_weather_sensor: typeof config.header_weather_sensor === 'string' && config.header_weather_sensor.trim()
         ? config.header_weather_sensor.trim()
         : null,
+      calendar_person_entities: normalizedCalendarPersonEntities,
       agenda_compact_events: config.agenda_compact_events ?? false,
       event_styles: normalizedEventStyles,
       day_styles: normalizedDayStyles
@@ -1385,8 +1403,10 @@ class SkylightCalendarCard extends HTMLElement {
       : null;
     const headerSensorChanged = previousHeaderTimeSensorState !== nextHeaderTimeSensorState ||
       previousHeaderWeatherSensorState !== nextHeaderWeatherSensorState;
+    const badgePersonStateChanged = this.getCalendarBadgePersonRenderSignature(oldHass) !==
+      this.getCalendarBadgePersonRenderSignature(hass);
 
-    if (headerSensorChanged) {
+    if (headerSensorChanged || badgePersonStateChanged) {
       if (this.isEventManagementDialogOpen()) {
         this._pendingHeaderSensorRender = true;
       } else {
@@ -3139,6 +3159,10 @@ class SkylightCalendarCard extends HTMLElement {
         font-size: 12px;
       }
 
+      .calendar-badge-inline .calendar-badge-person-state {
+        font-size: 10px;
+      }
+
       .calendar-badge.hide-calendar-name {
         justify-content: center;
         width: 40px;
@@ -4107,9 +4131,27 @@ class SkylightCalendarCard extends HTMLElement {
         overflow: hidden;
       }
 
+      .calendar-badge:not(.hide-calendar-name) .calendar-badge-person-icon {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        font-size: 13px;
+      }
+
+      .calendar-badge-inline:not(.hide-calendar-name) .calendar-badge-person-icon {
+        width: 28px !important;
+        height: 28px !important;
+        flex-basis: 28px;
+        font-size: 12px !important;
+      }
+
       .calendar-badge-icon ha-icon {
         --mdc-icon-size: 14px;
         color: inherit;
+      }
+
+      .calendar-badge:not(.hide-calendar-name) .calendar-badge-person-icon ha-icon {
+        --mdc-icon-size: 18px;
       }
 
       .calendar-badge-photo img {
@@ -4119,8 +4161,23 @@ class SkylightCalendarCard extends HTMLElement {
         display: block;
       }
 
+      .calendar-badge-label {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.15;
+      }
+
       .calendar-badge-name {
-        color: #374151;
+        color: inherit;
+      }
+
+      .calendar-badge-person-state {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.82;
+        margin-top: 2px;
+        white-space: nowrap;
       }
 
       .week-standard-container {
@@ -5564,7 +5621,7 @@ class SkylightCalendarCard extends HTMLElement {
                  style="background: ${badgeBackground};
                         border-color: ${badgeItem.isHidden ? '#d1d5db' : badgeItem.color};">
               ${this.renderCalendarBadgeIcon(badgeItem.entityId, badgeItem.name, badgeItem.color, badgeItem.isHidden, badgeItem.icon)}
-              ${hideCalendarNames ? '' : `<span class="calendar-badge-name" style="color: ${badgeTextColor}">${this.escapeHtml(badgeItem.name)}</span>`}
+              ${hideCalendarNames ? '' : this.renderCalendarBadgeLabel(badgeItem, badgeTextColor)}
             </div>
           `;
         }).join('')}
@@ -6126,7 +6183,7 @@ class SkylightCalendarCard extends HTMLElement {
                           border-color: ${badgeItem.isHidden ? '#d1d5db' : badgeItem.color};
                           cursor: pointer;">
                 ${this.renderCalendarBadgeIcon(badgeItem.entityId, badgeItem.name, badgeItem.color, badgeItem.isHidden, badgeItem.icon)}
-                ${hideCalendarNames ? '' : `<span class="calendar-badge-name" style="color: ${badgeTextColor}">${this.escapeHtml(badgeItem.name)}</span>`}
+                ${hideCalendarNames ? '' : this.renderCalendarBadgeLabel(badgeItem, badgeTextColor)}
               </div>
             `;
           }).join('')}
@@ -10097,6 +10154,8 @@ class SkylightCalendarCard extends HTMLElement {
       state: entityState.state,
       temperature: attrs.temperature ?? attrs.current_temperature ?? attrs.temp ?? null,
       condition: attrs.condition ?? null,
+      friendly_name: attrs.friendly_name ?? null,
+      entity_picture: attrs.entity_picture ?? null,
       forecast: Array.isArray(attrs.forecast)
         ? attrs.forecast.map((forecastItem) => ({
           datetime: forecastItem?.datetime ?? forecastItem?.date ?? null,
@@ -10280,21 +10339,98 @@ class SkylightCalendarCard extends HTMLElement {
     return String(configured).trim() || null;
   }
 
-  renderCalendarBadgeIcon(entityId, name, color, isHidden, iconOverride = null) {
-    const configuredBadgeIcon = iconOverride || this.getCalendarBadgeIcon(entityId);
-    const iconBackground = isHidden ? '#9ca3af' : this.normalizeSingleColor(color);
+  getCalendarBadgePersonEntityId(badgeEntityId) {
+    const mappings = this._config?.calendar_person_entities || {};
+    if (!badgeEntityId) return null;
 
-    if (configuredBadgeIcon && configuredBadgeIcon.startsWith('mdi:')) {
-      return `<div class="calendar-badge-icon" style="background: ${iconBackground}"><ha-icon icon="${this.escapeHtml(configuredBadgeIcon)}"></ha-icon></div>`;
+    if (mappings[badgeEntityId]) {
+      return mappings[badgeEntityId];
     }
 
-    if (configuredBadgeIcon) {
-      const normalizedUrl = this.normalizeBackgroundImageUrl(configuredBadgeIcon) || configuredBadgeIcon;
-      return `<div class="calendar-badge-icon calendar-badge-photo" style="background: ${iconBackground}"><img src="${this.escapeHtml(normalizedUrl)}" alt="${this.escapeHtml(name)}" loading="lazy"></div>`;
+    if (badgeEntityId.startsWith('virtual:')) {
+      const virtualId = badgeEntityId.replace('virtual:', '');
+      return mappings[virtualId] || null;
+    }
+
+    return null;
+  }
+
+  getCalendarBadgePersonState(badgeEntityId) {
+    const personEntityId = this.getCalendarBadgePersonEntityId(badgeEntityId);
+    if (!personEntityId) return null;
+    return this._hass?.states?.[personEntityId] || null;
+  }
+
+  formatPersonStateLabel(personState) {
+    if (!personState || !personState.state || ['unknown', 'unavailable'].includes(personState.state)) {
+      return '';
+    }
+
+    if (personState.state === 'home') return 'Home';
+    if (personState.state === 'not_home') return 'Away';
+
+    return String(personState.state)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  getPersonEntityPictureUrl(personState) {
+    const picture = personState?.attributes?.entity_picture;
+    if (typeof picture !== 'string' || !picture.trim()) return null;
+    const trimmedPicture = picture.trim();
+    if (trimmedPicture.startsWith('/') && typeof this._hass?.hassUrl === 'function') {
+      return this._hass.hassUrl(trimmedPicture);
+    }
+    return trimmedPicture;
+  }
+
+  getCalendarBadgePersonRenderSignature(hass = this._hass) {
+    const personEntityIds = Array.from(new Set(Object.values(this._config?.calendar_person_entities || {})
+      .map((entityId) => typeof entityId === 'string' ? entityId.trim() : '')
+      .filter(Boolean)));
+
+    if (personEntityIds.length === 0) return '';
+
+    return JSON.stringify(personEntityIds.map((entityId) => {
+      const entityState = hass?.states?.[entityId];
+      return {
+        entityId,
+        state: entityState?.state ?? null,
+        picture: entityState?.attributes?.entity_picture ?? null,
+        friendlyName: entityState?.attributes?.friendly_name ?? null
+      };
+    }));
+  }
+
+  renderCalendarBadgeLabel(badgeItem, badgeTextColor) {
+    const personStateLabel = this.formatPersonStateLabel(this.getCalendarBadgePersonState(badgeItem.entityId));
+    return `
+      <span class="calendar-badge-label" style="color: ${badgeTextColor}">
+        <span class="calendar-badge-name">${this.escapeHtml(badgeItem.name)}</span>
+        ${personStateLabel ? `<span class="calendar-badge-person-state">${this.escapeHtml(personStateLabel)}</span>` : ''}
+      </span>
+    `;
+  }
+
+  renderCalendarBadgeIcon(entityId, name, color, isHidden, iconOverride = null) {
+    const configuredBadgeIcon = iconOverride || this.getCalendarBadgeIcon(entityId);
+    const hasPersonEntity = !!this.getCalendarBadgePersonEntityId(entityId);
+    const personPictureUrl = configuredBadgeIcon ? null : this.getPersonEntityPictureUrl(this.getCalendarBadgePersonState(entityId));
+    const iconBackground = isHidden ? '#9ca3af' : this.normalizeSingleColor(color);
+    const personIconClass = hasPersonEntity ? ' calendar-badge-person-icon' : '';
+
+    if (configuredBadgeIcon && configuredBadgeIcon.startsWith('mdi:')) {
+      return `<div class="calendar-badge-icon${personIconClass}" style="background: ${iconBackground}"><ha-icon icon="${this.escapeHtml(configuredBadgeIcon)}"></ha-icon></div>`;
+    }
+
+    if (configuredBadgeIcon || personPictureUrl) {
+      const imageUrl = configuredBadgeIcon || personPictureUrl;
+      const normalizedUrl = this.normalizeBackgroundImageUrl(imageUrl) || imageUrl;
+      return `<div class="calendar-badge-icon calendar-badge-photo${personIconClass}" style="background: ${iconBackground}"><img src="${this.escapeHtml(normalizedUrl)}" alt="${this.escapeHtml(name)}" loading="lazy"></div>`;
     }
 
     const initial = name.charAt(0).toUpperCase();
-    return `<div class="calendar-badge-icon" style="background: ${iconBackground}">${this.escapeHtml(initial)}</div>`;
+    return `<div class="calendar-badge-icon${personIconClass}" style="background: ${iconBackground}">${this.escapeHtml(initial)}</div>`;
   }
 
   escapeHtml(text) {
@@ -10379,6 +10515,7 @@ class SkylightCalendarCard extends HTMLElement {
       show_dashboard_nav_button: false,
       header_dashboard_path: null,
       header_weather_sensor: '',
+      calendar_person_entities: {},
       color_scheme: 'auto',
       enable_event_management: true
     };
@@ -11085,6 +11222,7 @@ class SkylightCalendarCardEditor extends HTMLElement {
       ${this.renderSubSection('Event font colors', `<div class="map-grid">${this.renderMapRowInputs('event_font_colors', { label: 'event font colors', inputType: 'color' })}</div>`)}
       ${this.renderSubSection('Calendar display names', `<div class="map-grid">${this.renderMapRowInputs('calendar_names', { label: 'calendar names', placeholder: 'Display name' })}</div>`)}
       ${this.renderSubSection('Calendar badge icons', `<div class="map-grid">${this.renderMapRowInputs('calendar_badge_icons', { label: 'badge icons', placeholder: 'mdi:icon or URL' })}</div>`)}
+      ${this.renderSubSection('Calendar badge people', `<div class="map-grid">${this.renderMapRowInputs('calendar_person_entities', { label: 'badge people', placeholder: 'person.ian' })}</div>`)}
       <div class="boolean-list">
         <label><input type="checkbox" data-field="header_background_transparent" ${this.normalizeBackgroundOpacity(this._config.header_background_opacity, this._config.header_background_transparent ? 100 : 0) >= 100 ? 'checked' : ''}> Transparent header surfaces</label>
         <label><input type="checkbox" data-field="background_transparent" ${this.normalizeBackgroundOpacity(this._config.background_opacity, this._config.background_transparent ? 100 : 0) >= 100 ? 'checked' : ''}> Transparent background surfaces</label>
