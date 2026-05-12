@@ -23,7 +23,20 @@ global.customElements = {
   get(name) { return this.registry.get(name); }
 };
 global.window = { localStorage: { getItem: () => null, setItem: () => {} }, getComputedStyle: () => ({ color: 'rgb(0, 0, 0)' }) };
-global.document = { createElement: () => ({ style: {}, appendChild: () => {}, remove: () => {} }), body: { appendChild: () => {} } };
+global.document = {
+  createElement: () => ({
+    style: {},
+    _textContent: '',
+    set textContent(value) { this._textContent = String(value ?? ''); },
+    get textContent() { return this._textContent; },
+    get innerHTML() {
+      return this._textContent.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    },
+    appendChild: () => {},
+    remove: () => {}
+  }),
+  body: { appendChild: () => {} }
+};
 global.CustomEvent = class CustomEvent {
   constructor(type, init = {}) {
     this.type = type;
@@ -100,7 +113,7 @@ test('getStubConfig includes key configuration defaults', () => {
     'combine_background', 'hide_calendars', 'hide_year', 'hide_controls',
     'hide_navigation_buttons', 'hide_add_event_button', 'hide_view_selector',
     'hide_dark_mode_toggle', 'show_dashboard_nav_button', 'header_dashboard_path',
-    'header_weather_sensor', 'color_scheme', 'enable_event_management'
+    'header_weather_sensor', 'calendar_person_entities', 'color_scheme', 'enable_event_management'
   ];
   for (const key of requiredKeys) assert.ok(key in stub, `${key} should exist`);
 });
@@ -149,6 +162,7 @@ test('setConfig applies visual layout and styling options', () => {
     event_color_bar_width: 12,
     color_scheme: 'dark',
     calendar_badge_icons: { 'calendar.family': 'mdi:home' },
+    calendar_person_entities: { 'calendar.family': 'person.ian' },
     colors: { 'calendar.family': '#f00' },
     event_font_colors: { 'calendar.family': '#0f0' },
     hide_badge_calendars: ['calendar.family'],
@@ -198,6 +212,7 @@ test('setConfig applies visual layout and styling options', () => {
   assert.equal(card._config.event_color_bar_width, 12);
   assert.equal(card._config.color_scheme, 'dark');
   assert.equal(card._config.calendar_badge_icons['calendar.family'], 'mdi:home');
+  assert.equal(card._config.calendar_person_entities['calendar.family'], 'person.ian');
   assert.equal(card._config.colors['calendar.family'], '#f00');
   assert.equal(card._config.event_font_colors['calendar.family'], '#0f0');
   assert.deepEqual(card._config.hide_badge_calendars, ['calendar.family']);
@@ -268,6 +283,32 @@ test('checkAllCalendarCapabilities marks google, caldav, and local capabilities 
 });
 
 
+
+test('calendar badge can show linked person location and picture', () => {
+  const card = new Card();
+  card._hass = {
+    states: {
+      'calendar.family': { entity_id: 'calendar.family', attributes: { friendly_name: 'Ian' } },
+      'person.ian': { entity_id: 'person.ian', state: 'home', attributes: { friendly_name: 'Ian', entity_picture: '/api/image/serve/ian/original' } }
+    },
+    locale: { language: 'en' },
+    language: 'en',
+    themes: { darkMode: false }
+  };
+  card.setConfig({
+    entities: ['calendar.family'],
+    calendar_person_entities: { 'calendar.family': 'person.ian' }
+  });
+
+  originalCardRender.call(card);
+  const html = card._root.innerHTML;
+
+  assert.match(html, /calendar-badge-label/);
+  assert.match(html, /calendar-badge-person-icon/);
+  assert.match(html, /calendar-badge-person-state/);
+  assert.match(html, />Home</);
+  assert.match(html, /src="\/api\/image\/serve\/ian\/original"/);
+});
 
 test('calendar render includes header controls and modal container', () => {
   const card = new Card();
