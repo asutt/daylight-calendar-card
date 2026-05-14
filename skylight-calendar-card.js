@@ -3725,7 +3725,8 @@ class SkylightCalendarCard extends HTMLElement {
       }
 
       .week-day-forecast,
-      .week-standard-day-forecast {
+      .week-standard-day-forecast,
+      .agenda-day-forecast {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -3932,6 +3933,18 @@ class SkylightCalendarCard extends HTMLElement {
         font-weight: 700;
         color: #111827;
         margin-top: 4px;
+      }
+
+      .agenda-day-forecast {
+        margin-top: 6px;
+      }
+
+      .agenda-day-forecast .forecast-condition ha-icon {
+        --mdc-icon-size: 18px;
+      }
+
+      .agenda-day-forecast .forecast-temperatures {
+        font-size: 11px;
       }
 
       .agenda-day-row.today .agenda-day-label {
@@ -5999,6 +6012,7 @@ class SkylightCalendarCard extends HTMLElement {
           <div class="agenda-day-label">
             <div class="agenda-day-weekday">${dayNames[date.getDay()]}</div>
             <div class="agenda-day-date">${date.getDate()}</div>
+            ${this.renderDayForecast(date, 'agenda')}
           </div>
           <div class="agenda-day-events">
             ${events.map(event => {
@@ -10306,7 +10320,9 @@ class SkylightCalendarCard extends HTMLElement {
       ? 'week-standard-day-forecast'
       : viewMode === 'month'
         ? 'month-day-forecast'
-        : 'week-day-forecast';
+        : viewMode === 'agenda'
+          ? 'agenda-day-forecast'
+          : 'week-day-forecast';
 
     return `
       <div class="${forecastClass}">

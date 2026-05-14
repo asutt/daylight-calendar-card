@@ -408,6 +408,38 @@ test('weather renders Home Assistant mdi icons instead of emoji glyphs', () => {
   assert.doesNotMatch(forecastHtml, /☀️|⛅/);
 });
 
+test('agenda view renders daily weather forecast', () => {
+  const card = makeCard({
+    entities: ['calendar.family'],
+    default_view: 'agenda',
+    header_weather_sensor: 'weather.home'
+  });
+  card._viewMode = 'agenda';
+  card._events = [];
+  card.getAgendaEventMinHeight = () => '68px';
+  card._hass = {
+    states: {
+      'weather.home': {
+        state: 'sunny',
+        attributes: {
+          forecast: [
+            { datetime: '2026-05-14T12:00:00Z', condition: 'rainy', temperature: 18, templow: 9 }
+          ]
+        }
+      }
+    }
+  };
+  card._agendaStartDate = new Date('2026-05-14T00:00:00Z');
+  card._agendaEndDate = new Date('2026-05-14T23:59:59Z');
+
+  const html = card.renderAgenda();
+
+  assert.match(html, /class="agenda-day-forecast"/);
+  assert.match(html, /<ha-icon icon="mdi:weather-rainy"><\/ha-icon>/);
+  assert.match(html, /<span class="forecast-temp-high">18°<\/span>/);
+  assert.match(html, /<span class="forecast-temp-low">9°<\/span>/);
+});
+
 test('hide_navigation_buttons hides previous, next, and today controls only', () => {
   const card = new Card();
   card._hass = { states: {}, locale: { language: 'en' }, language: 'en', themes: { darkMode: false } };
