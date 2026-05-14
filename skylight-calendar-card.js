@@ -3232,11 +3232,18 @@ class SkylightCalendarCard extends HTMLElement {
       }
 
       .header-weather {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         font-size: 28px;
         font-weight: 500;
         opacity: 0.95;
         line-height: 1;
         white-space: nowrap;
+      }
+
+      .header-weather ha-icon {
+        --mdc-icon-size: 28px;
       }
 
       .add-event-button {
@@ -3603,6 +3610,10 @@ class SkylightCalendarCard extends HTMLElement {
         font-size: 14px;
       }
 
+      .month-day-forecast .forecast-condition ha-icon {
+        --mdc-icon-size: 14px;
+      }
+
       .month-day-forecast .forecast-temperatures {
         font-size: 12px;
         gap: 2px;
@@ -3724,7 +3735,12 @@ class SkylightCalendarCard extends HTMLElement {
       }
 
       .forecast-condition {
+        display: inline-flex;
         font-size: 16px;
+      }
+
+      .forecast-condition ha-icon {
+        --mdc-icon-size: 20px;
       }
 
       .forecast-temperatures {
@@ -5645,12 +5661,12 @@ class SkylightCalendarCard extends HTMLElement {
 
   renderHeaderTitle() {
     const headerTime = this.getFormattedHeaderSensorTime();
-    const headerWeather = this.getFormattedHeaderWeather();
+    const headerWeather = this.getHeaderWeatherData();
     return `
       <div class="header-title-wrap">
         <h2 class="header-title">${this.escapeHtml(this._config.title || '')}</h2>
         ${headerTime ? `<span class="header-time">${this.escapeHtml(headerTime)}</span>` : ''}
-        ${headerWeather ? `<span class="header-weather">${this.escapeHtml(headerWeather)}</span>` : ''}
+        ${headerWeather ? `<span class="header-weather"><ha-icon icon="${this.escapeHtml(headerWeather.conditionIcon)}"></ha-icon>${this.escapeHtml(headerWeather.temperature)}</span>` : ''}
       </div>
     `;
   }
@@ -10203,31 +10219,32 @@ class SkylightCalendarCard extends HTMLElement {
     return `${Math.round(numericValue)}°`;
   }
 
-  mapWeatherConditionToSymbol(conditionValue) {
-    const condition = String(conditionValue || '').trim().toLowerCase();
+  mapWeatherConditionToIcon(conditionValue) {
+    const condition = String(conditionValue || '').trim().toLowerCase().replace(/_/g, '-');
     if (!condition || condition === 'unknown' || condition === 'unavailable') return '';
 
-    const symbolMap = {
-      sunny: '☀️',
-      clear: '☀️',
-      clear_night: '🌙',
-      partlycloudy: '⛅',
-      cloudy: '☁️',
-      overcast: '☁️',
-      rainy: '🌧️',
-      pouring: '🌧️',
-      snow: '❄️',
-      snowy: '❄️',
-      snowy_rainy: '🌨️',
-      hail: '🌨️',
-      lightning: '⛈️',
-      lightning_rainy: '⛈️',
-      windy: '💨',
-      windy_variant: '💨',
-      fog: '🌫️'
+    const iconMap = {
+      sunny: 'mdi:weather-sunny',
+      clear: 'mdi:weather-sunny',
+      'clear-night': 'mdi:weather-night',
+      partlycloudy: 'mdi:weather-partly-cloudy',
+      cloudy: 'mdi:weather-cloudy',
+      overcast: 'mdi:weather-cloudy',
+      rainy: 'mdi:weather-rainy',
+      pouring: 'mdi:weather-pouring',
+      snow: 'mdi:weather-snowy',
+      snowy: 'mdi:weather-snowy',
+      'snowy-rainy': 'mdi:weather-snowy-rainy',
+      hail: 'mdi:weather-hail',
+      lightning: 'mdi:weather-lightning',
+      'lightning-rainy': 'mdi:weather-lightning-rainy',
+      windy: 'mdi:weather-windy',
+      'windy-variant': 'mdi:weather-windy-variant',
+      fog: 'mdi:weather-fog',
+      exceptional: 'mdi:alert-circle-outline'
     };
 
-    return symbolMap[condition] || '';
+    return iconMap[condition] || '';
   }
 
   getHeaderWeatherData() {
@@ -10238,19 +10255,19 @@ class SkylightCalendarCard extends HTMLElement {
 
     const attrs = weatherEntity.attributes || {};
     const condition = attrs.condition || weatherEntity.state;
-    const conditionSymbol = this.mapWeatherConditionToSymbol(condition);
+    const conditionIcon = this.mapWeatherConditionToIcon(condition);
     const temperature = this.normalizeWeatherTemperature(
       attrs.temperature ?? attrs.current_temperature ?? attrs.temp ?? weatherEntity.state
     );
 
-    if (!conditionSymbol || !temperature) return null;
-    return { conditionSymbol, temperature };
+    if (!conditionIcon || !temperature) return null;
+    return { conditionIcon, temperature };
   }
 
   getFormattedHeaderWeather() {
     const weatherData = this.getHeaderWeatherData();
     if (!weatherData) return '';
-    return `${weatherData.conditionSymbol} ${weatherData.temperature}`;
+    return `${weatherData.conditionIcon} ${weatherData.temperature}`;
   }
 
   getForecastForDate(date) {
@@ -10276,10 +10293,10 @@ class SkylightCalendarCard extends HTMLElement {
 
     const highTemp = this.normalizeWeatherTemperature(match.temperature ?? match.temphigh ?? match.high);
     const lowTemp = this.normalizeWeatherTemperature(match.templow ?? match.low ?? match.temperature_low);
-    const conditionSymbol = this.mapWeatherConditionToSymbol(match.condition);
+    const conditionIcon = this.mapWeatherConditionToIcon(match.condition);
 
-    if (!conditionSymbol || !highTemp) return null;
-    return { conditionSymbol, highTemp, lowTemp };
+    if (!conditionIcon || !highTemp) return null;
+    return { conditionIcon, highTemp, lowTemp };
   }
 
   renderDayForecast(date, viewMode = 'week-compact') {
@@ -10293,7 +10310,7 @@ class SkylightCalendarCard extends HTMLElement {
 
     return `
       <div class="${forecastClass}">
-        <span class="forecast-condition">${this.escapeHtml(forecast.conditionSymbol)}</span>
+        <span class="forecast-condition"><ha-icon icon="${this.escapeHtml(forecast.conditionIcon)}"></ha-icon></span>
         <span class="forecast-temperatures">
           <span class="forecast-temp-high">${this.escapeHtml(forecast.highTemp)}</span>
           ${forecast.lowTemp ? `<span class="forecast-temp-low">${this.escapeHtml(forecast.lowTemp)}</span>` : ''}

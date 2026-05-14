@@ -379,6 +379,35 @@ test('calendar render includes header controls and modal container', () => {
   assert.match(html, /id="event-modal"/);
 });
 
+
+test('weather renders Home Assistant mdi icons instead of emoji glyphs', () => {
+  const card = makeCard({
+    entities: ['calendar.family'],
+    header_weather_sensor: 'weather.home'
+  });
+  card._hass = {
+    states: {
+      'weather.home': {
+        state: 'sunny',
+        attributes: {
+          temperature: 21,
+          forecast: [
+            { datetime: '2026-05-14T12:00:00Z', condition: 'partlycloudy', temperature: 24, templow: 12 }
+          ]
+        }
+      }
+    }
+  };
+
+  const headerHtml = card.renderHeaderTitle();
+  assert.match(headerHtml, /<ha-icon icon="mdi:weather-sunny"><\/ha-icon>21°/);
+  assert.doesNotMatch(headerHtml, /☀️|⛅/);
+
+  const forecastHtml = card.renderDayForecast(new Date('2026-05-14T00:00:00Z'));
+  assert.match(forecastHtml, /<ha-icon icon="mdi:weather-partly-cloudy"><\/ha-icon>/);
+  assert.doesNotMatch(forecastHtml, /☀️|⛅/);
+});
+
 test('hide_navigation_buttons hides previous, next, and today controls only', () => {
   const card = new Card();
   card._hass = { states: {}, locale: { language: 'en' }, language: 'en', themes: { darkMode: false } };
