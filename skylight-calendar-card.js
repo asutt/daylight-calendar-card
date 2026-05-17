@@ -2551,7 +2551,7 @@ class SkylightCalendarCard extends HTMLElement {
       const diff = (currentDay - this._config.firstDayOfWeek + 7) % 7;
 
       const startDate = new Date(anchorDate);
-      startDate.setDate(anchorDate.getDate() - diff);
+      startDate.setDate(anchorDate.getDate() - diff - 7);
       startDate.setHours(0, 0, 0, 0);
 
       const endDate = new Date(startDate);
