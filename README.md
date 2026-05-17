@@ -61,7 +61,7 @@ Designed for clarity at a glance, with flexible views and deep customization.
 
 ### Recommended: Install via HACS
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=superdingo101&repository=daylight-calendar-card&category=frontend)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=asutt&repository=daylight-calendar-card&category=frontend)
 
 OR
 
